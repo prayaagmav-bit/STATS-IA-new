@@ -4,11 +4,16 @@ from scipy import stats
 
 def calculate_central_tendency():
     # Define file path for cleaned daily temperature data
-    file_path = 'cleaned_daily_data.csv'
-    if not os.path.exists(file_path):
-        file_path = '../cleaned_daily_data.csv'
-    if not os.path.exists(file_path):
-        file_path = 'statistics/cleaned_daily_data.csv'
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base_dir, '..', 'cleaned_daily_data.csv'),
+        os.path.join(base_dir, 'cleaned_daily_data.csv'),
+        'cleaned_daily_data.csv',
+        os.path.join('main', 'cleaned_daily_data.csv'),
+        '../cleaned_daily_data.csv',
+        'statistics/cleaned_daily_data.csv',
+    ]
+    file_path = next((p for p in candidates if os.path.exists(p)), 'cleaned_daily_data.csv')
         
     print(f"Loading dataset from: {file_path}")
     df = pd.read_csv(file_path)
@@ -35,7 +40,8 @@ def calculate_central_tendency():
     # Save frequency distribution table
     freq_table = data.value_counts().reset_index()
     freq_table.columns = ['Temperature', 'Frequency']
-    freq_table.to_csv('frequency_table.csv', index=False)
+    freq_output = os.path.join(base_dir, 'frequency_table.csv')
+    freq_table.to_csv(freq_output, index=False)
     print("Frequency distribution table saved successfully.")
 
 if __name__ == '__main__':

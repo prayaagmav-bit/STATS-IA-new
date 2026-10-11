@@ -1,13 +1,39 @@
+import os
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 
 def generate_graphs(cleaned_data_path="cleaned_daily_data.csv", freq_data_path="frequency_table.csv", cleaned_df=None, freq_df=None, threshold=40.0):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     if cleaned_df is None:
-        cleaned_df = pd.read_csv(cleaned_data_path)
+        if cleaned_data_path and os.path.exists(cleaned_data_path):
+            cleaned_df = pd.read_csv(cleaned_data_path)
+        else:
+            candidates = [
+                cleaned_data_path if cleaned_data_path else "",
+                os.path.join(base_dir, '..', 'cleaned_daily_data.csv'),
+                os.path.join(base_dir, 'cleaned_daily_data.csv'),
+                'cleaned_daily_data.csv',
+                os.path.join('main', 'cleaned_daily_data.csv'),
+                os.path.join('main', 'Graphs', 'cleaned_daily_data.csv'),
+            ]
+            path = next((p for p in candidates if p and os.path.exists(p)), 'cleaned_daily_data.csv')
+            cleaned_df = pd.read_csv(path)
+
     if freq_df is None:
-        freq_df = pd.read_csv(freq_data_path)
+        if freq_data_path and os.path.exists(freq_data_path):
+            freq_df = pd.read_csv(freq_data_path)
+        else:
+            candidates = [
+                os.path.join(base_dir, '..', 'frequency_table.csv'),
+                os.path.join(base_dir, 'frequency_table.csv'),
+                os.path.join('main', 'frequency_table.csv'),
+                os.path.join('main', 'Graphs', 'frequency_table.csv'),
+                'frequency_table.csv',
+            ]
+            path = next((p for p in candidates if p and os.path.exists(p)), 'frequency_table.csv')
+            freq_df = pd.read_csv(path)
 
     if not pd.api.types.is_datetime64_any_dtype(cleaned_df["DATE"]):
         cleaned_df["DATE"] = pd.to_datetime(cleaned_df["DATE"])
@@ -108,3 +134,17 @@ def generate_graphs(cleaned_data_path="cleaned_daily_data.csv", freq_data_path="
     fig.update_xaxes(title_text="Daily Max Temperature (°C)", row=3, col=1)
 
     return fig
+
+if __name__ == "__main__":
+    print("==========================================")
+    print(" PERSON 4: GRAPHS & VISUALIZATION MODULE")
+    print("==========================================")
+    fig = generate_graphs()
+    print("Graphs generated successfully with 5 subplots:")
+    print("  1. Daily Maximum Temperature Trend (Line Chart)")
+    print("  2. Temperature Distribution Histogram")
+    print("  3. Frequency Bar Graph across Class Intervals")
+    print("  4. Frequency Polygon (Class Midpoints)")
+    print("  5. Temperature Dispersion & Outliers (Box Plot)")
+    print(f"Total traces added: {len(fig.data)}")
+    print("==========================================")

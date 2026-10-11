@@ -67,13 +67,17 @@ def analyze_heat_conditions(df, temp_col='T2M_MAX', threshold=40.0):
 
 if __name__ == "__main__":
     # Find the cleaned data CSV based on the folder structure
-    file_path = 'cleaned_daily_data.csv'
-    if not os.path.exists(file_path):
-        file_path = '../cleaned_daily_data.csv'
-    if not os.path.exists(file_path):
-        file_path = '../data/cleaned_daily_data.csv'
-    if not os.path.exists(file_path):
-        file_path = 'data/cleaned_daily_data.csv'
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base_dir, '..', 'cleaned_daily_data.csv'),
+        os.path.join(base_dir, 'cleaned_daily_data.csv'),
+        'cleaned_daily_data.csv',
+        '../cleaned_daily_data.csv',
+        os.path.join('main', 'cleaned_daily_data.csv'),
+        '../data/cleaned_daily_data.csv',
+        'data/cleaned_daily_data.csv',
+    ]
+    file_path = next((p for p in candidates if os.path.exists(p)), 'cleaned_daily_data.csv')
 
     try:
         df = pd.read_csv(file_path)

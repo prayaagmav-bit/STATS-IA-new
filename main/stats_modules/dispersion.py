@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 
@@ -62,12 +63,23 @@ def print_dispersion_summary(dispersion_results: dict):
 
 # If this file is run directly (for Person 5 to test their code independently)
 if __name__ == "__main__":
-    try:
-        # Assuming the CSV is accessible from this path when run from the root directory
-        df_sample = pd.read_csv("Graphs/cleaned_daily_data.csv")
-        
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base_dir, '..', 'cleaned_daily_data.csv'),
+        os.path.join(base_dir, '..', 'Graphs', 'cleaned_daily_data.csv'),
+        os.path.join(base_dir, 'cleaned_daily_data.csv'),
+        'cleaned_daily_data.csv',
+        'Graphs/cleaned_daily_data.csv',
+        os.path.join('main', 'cleaned_daily_data.csv'),
+        os.path.join('main', 'Graphs', 'cleaned_daily_data.csv'),
+    ]
+    file_path = next((p for p in candidates if os.path.exists(p)), None)
+
+    if file_path:
+        print(f"Loading dataset from: {file_path}")
+        df_sample = pd.read_csv(file_path)
         # Test the function on the Maximum Temperature column
         results = calculate_dispersion(df_sample, 'T2M_MAX')
         print_dispersion_summary(results)
-    except FileNotFoundError:
-        print("Dataset not found. Please ensure 'cleaned_daily_data.csv' is in the 'Graphs' directory.")
+    else:
+        print("Dataset not found. Please ensure 'cleaned_daily_data.csv' is in the project directory.")
