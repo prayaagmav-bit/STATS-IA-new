@@ -108,10 +108,62 @@ with tab_home:
 
         res = analyze_heat_conditions(view.copy(), temp_col="T2M_MAX", threshold=threshold)
 
-        # Status Box
+        # Status Box & Detected Heatwave Date Ranges
         status = res.get("Monitoring Status", "NORMAL")
-        box = st.error if "CRITICAL" in status else st.warning if "ALERT" in status else st.success
-        box(f"**Status:** {status}")
+
+        # Extract streaks directly from view to guarantee detection regardless of cache
+        severe_streaks = res.get("Severe Streaks", [])
+        if not severe_streaks and "T2M_MAX" in view.columns and "DATE" in view.columns:
+            view_high = view["T2M_MAX"] >= threshold
+            streak_grp = (~view_high).cumsum()
+            high_df = view[view_high]
+            for _, grp in high_df.groupby(streak_grp):
+                if len(grp) >= 3:
+                    s_d = pd.to_datetime(grp["DATE"].iloc[0]).strftime("%d %b %Y")
+                    e_d = pd.to_datetime(grp["DATE"].iloc[-1]).strftime("%d %b %Y")
+                    severe_streaks.append({
+                        "start_date": s_d,
+                        "end_date": e_d,
+                        "date_range": f"{s_d} – {e_d}" if s_d != e_d else s_d,
+                        "days": len(grp),
+                        "peak_temp": round(float(grp["T2M_MAX"].max()), 2)
+                    })
+
+        if "CRITICAL" in status:
+            if severe_streaks:
+                longest = max(severe_streaks, key=lambda x: x["days"])
+                if len(severe_streaks) == 1:
+                    st.error(
+                        f"### 🚨 Status: {status}\n\n"
+                        f"**📅 Severe Heatwave Date Range:** `{severe_streaks[0]['date_range']}` "
+                        f"({severe_streaks[0]['days']} consecutive days | Peak: {severe_streaks[0]['peak_temp']} °C)"
+                    )
+                else:
+                    st.error(
+                        f"### 🚨 Status: {status}\n\n"
+                        f"**🔥 Longest Severe Event:** `{longest['date_range']}` "
+                        f"({longest['days']} consecutive days | Peak: {longest['peak_temp']} °C)\n\n"
+                        f"**📍 Total Severe Events Detected:** {len(severe_streaks)} distinct heatwave periods (≥ 3 consecutive days ≥ {threshold} °C)"
+                    )
+                    with st.expander(f"📅 View All {len(severe_streaks)} Severe Heatwave Date Ranges", expanded=True):
+                        streak_df = pd.DataFrame([
+                            {
+                                "Event #": i,
+                                "Start Date": s["start_date"],
+                                "End Date": s["end_date"],
+                                "Duration": f"{s['days']} consecutive days",
+                                "Peak Temp": f"{s['peak_temp']} °C",
+                                "Highlight": "🔥 Longest Streak" if s == longest else ""
+                            }
+                            for i, s in enumerate(severe_streaks, 1)
+                        ])
+                        st.dataframe(streak_df, hide_index=True)
+            else:
+                st.error(f"### 🚨 Status: {status}")
+        elif "ALERT" in status:
+            st.warning(f"### ⚠️ Status: {status}")
+        else:
+            st.success(f"### ✅ Status: {status}")
 
         # Metrics
         c1, c2, c3, c4 = st.columns(4)

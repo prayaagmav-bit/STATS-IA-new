@@ -25,10 +25,33 @@ def analyze_heat_conditions(df, temp_col='T2M_MAX', threshold=40.0):
     # 3. Calculate consecutive high-temperature days (heatwave streaks)
     df['Streak_Group'] = (~df['Is_High_Temp']).cumsum()
     df['Consecutive_Days'] = df.groupby('Streak_Group')['Is_High_Temp'].cumsum()
-    max_consecutive_days = int(df['Consecutive_Days'].max())
+    max_consecutive_days = int(df['Consecutive_Days'].max()) if not df.empty else 0
     
-    max_temp = df[temp_col].max()
-    
+    max_temp = df[temp_col].max() if not df.empty else 0
+
+    # Extract date ranges for heatwave events
+    heatwave_streaks = []
+    severe_streaks = []
+    date_col = 'DATE' if 'DATE' in df.columns else ('Date' if 'Date' in df.columns else None)
+
+    if date_col is not None and high_temp_days > 0:
+        high_df = df[df['Is_High_Temp']]
+        for _, group in high_df.groupby('Streak_Group'):
+            k = len(group)
+            s_date = pd.to_datetime(group[date_col].iloc[0]).strftime("%d %b %Y")
+            e_date = pd.to_datetime(group[date_col].iloc[-1]).strftime("%d %b %Y")
+            p_max = round(float(group[temp_col].max()), 2)
+            streak_entry = {
+                "start_date": s_date,
+                "end_date": e_date,
+                "date_range": f"{s_date} – {e_date}" if s_date != e_date else s_date,
+                "days": k,
+                "peak_temp": p_max
+            }
+            heatwave_streaks.append(streak_entry)
+            if k >= 3:
+                severe_streaks.append(streak_entry)
+
     # 4. Generate Heat Monitoring Status & Engineering Decision
     if max_consecutive_days >= 3:
         status = "CRITICAL: Severe Heatwave Detected"
@@ -59,7 +82,9 @@ def analyze_heat_conditions(df, temp_col='T2M_MAX', threshold=40.0):
         "Percentage (%)": round(percent_high_temp, 2),
         "Max Consecutive Days": max_consecutive_days,
         "Monitoring Status": status,
-        "Engineering Decision": decision
+        "Engineering Decision": decision,
+        "Severe Streaks": severe_streaks,
+        "All Heat Streaks": heatwave_streaks,
     }
     
     return results
@@ -98,6 +123,13 @@ if __name__ == "__main__":
             if key in ["Monitoring Status", "Engineering Decision"]:
                 print(f"\n--- {key.upper()} ---")
                 print(value)
+            elif key == "Severe Streaks":
+                if value:
+                    print(f"\n--- SEVERE HEATWAVE DATE RANGES ({len(value)} DETECTED) ---")
+                    for i, s in enumerate(value, 1):
+                        print(f"  {i}. {s['date_range']} ({s['days']} consecutive days | Peak: {s['peak_temp']} °C)")
+            elif key == "All Heat Streaks":
+                continue
             else:
                 print(f"{key}: {value}")
                 
